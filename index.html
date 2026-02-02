@@ -157,7 +157,7 @@
       min-height: 18px;
     }
 
-    /* cards for step 2 */
+    /* cards for date idea step */
     .pick-grid{
       display: none;
       margin: 14px auto 6px;
@@ -181,7 +181,7 @@
     .pick-title{ font-weight: 900; margin: 0 0 4px; }
     .pick-desc{ margin: 0; font-size: 13px; opacity: .75; }
 
-    /* step 3 */
+    /* plan step */
     .plan {
       display: none;
       margin-top: 14px;
@@ -289,6 +289,95 @@
       100% { opacity: 0; transform: translate(-50%, -150%) scale(1.2); }
     }
 
+    /* QUIZ */
+    .quiz {
+      display: none;
+      margin: 14px auto 6px;
+      width: min(560px, 96%);
+      text-align: left;
+      animation: pop .35s ease;
+    }
+    .quiz-head{
+      display:flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .quiz-title{
+      font-weight: 950;
+      margin: 0;
+      font-size: 18px;
+    }
+    .quiz-progress{
+      font-size: 12px;
+      opacity: .7;
+      white-space: nowrap;
+    }
+    .quiz-q{
+      font-size: 18px;
+      font-weight: 900;
+      margin: 10px 0 10px;
+      line-height: 1.25;
+    }
+    .quiz-opts{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .opt{
+      border: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.75);
+      box-shadow: 0 10px 18px rgba(0,0,0,.08);
+      font-weight: 850;
+      text-align: left;
+      transition: transform .12s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .opt:hover{ transform: translateY(-1px); }
+    .opt:active{ transform: scale(.99); }
+    .opt .mini{
+      display:block;
+      font-size: 12px;
+      opacity: .75;
+      margin-top: 3px;
+      font-weight: 700;
+    }
+
+    /* FUNNY POPUP (wrong answer) */
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: 52%;
+      transform: translate(-50%, -50%) scale(.98);
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+      border-radius: 18px;
+      padding: 14px 16px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.20);
+      z-index: 10000;
+      display: none;
+      width: min(420px, 86vw);
+      text-align: center;
+      animation: popToast .25s ease;
+    }
+    .toast strong{
+      display:block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .toast span{
+      font-size: 13px;
+      opacity: .8;
+    }
+    @keyframes popToast{
+      from { opacity: 0; transform: translate(-50%, -50%) scale(.94); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
     @keyframes pop {
       from { transform: scale(.96); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
@@ -305,6 +394,7 @@
 
 <body>
   <canvas id="confettiCanvas"></canvas>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <main class="card" role="main" aria-live="polite">
     <div class="top-actions">
@@ -369,7 +459,18 @@
 
     <div class="hint" id="hint">“No” seems a bit shy 😈</div>
 
-    <!-- STEP 2 -->
+    <!-- STEP 2: QUIZ -->
+    <section class="quiz" id="quiz" aria-label="Us quiz">
+      <div class="quiz-head">
+        <p class="quiz-title">Quick “us” quiz 💘</p>
+        <p class="quiz-progress" id="quizProgress">Question 1/3</p>
+      </div>
+      <div class="quiz-q" id="quizQ">Question goes here</div>
+      <div class="quiz-opts" id="quizOpts"></div>
+      <div class="tiny" id="quizTiny">No pressure… but also yes pressure 😌</div>
+    </section>
+
+    <!-- STEP 3A: Date idea -->
     <section class="pick-grid" id="pickGrid" aria-label="Pick a date idea">
       <button class="pick-card" data-pick="Coffee date ☕">
         <p class="pick-title">Coffee date ☕</p>
@@ -389,7 +490,7 @@
       </button>
     </section>
 
-    <!-- STEP 3 -->
+    <!-- STEP 3B: Time + calendar -->
     <section class="plan" id="plan">
       <h2 id="planTitle">Perfect 😌</h2>
       <div class="pill-row" aria-label="Pick a time">
@@ -440,6 +541,15 @@
     const finalConfettiBtn = document.getElementById("finalConfettiBtn");
     const summaryPick = document.getElementById("summaryPick");
     const summaryTime = document.getElementById("summaryTime");
+
+    const toast = document.getElementById("toast");
+
+    /* ---------- QUIZ ELEMENTS ---------- */
+    const quiz = document.getElementById("quiz");
+    const quizQ = document.getElementById("quizQ");
+    const quizOpts = document.getElementById("quizOpts");
+    const quizProgress = document.getElementById("quizProgress");
+    const quizTiny = document.getElementById("quizTiny");
 
     /* ---------- SOUND (no external files) ---------- */
     let soundOn = true;
@@ -561,10 +671,10 @@
     }
 
     function burstHeartsAround(el, count = 8) {
-      const r = el.getBoundingClientRect();
+      const r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
       for (let i = 0; i < count; i++) {
-        const x = r.left + r.width / 2 + (Math.random() - 0.5) * 50;
-        const y = r.top + r.height / 2 + (Math.random() - 0.5) * 30;
+        const x = (r ? (r.left + r.width/2) : window.innerWidth/2) + (Math.random() - 0.5) * 60;
+        const y = (r ? (r.top + r.height/2) : window.innerHeight/2) + (Math.random() - 0.5) * 40;
         spawnHeart(x, y);
       }
     }
@@ -644,7 +754,6 @@
       if (d < 140) onNoAttempt(e.clientX, e.clientY);
     });
 
-    // also dodge on touch/press
     zone.addEventListener("pointerdown", e => {
       const b = noBtn.getBoundingClientRect();
       const d = Math.hypot(
@@ -656,7 +765,6 @@
 
     noBtn.addEventListener("click", e => {
       e.preventDefault();
-      // if they manage to click, still dodge + escalate
       const fakeX = e.clientX || (window.innerWidth * 0.5);
       const fakeY = e.clientY || (window.innerHeight * 0.5);
       onNoAttempt(fakeX, fakeY);
@@ -672,21 +780,136 @@
       dot3.classList.toggle("active", step === 3);
     }
 
-    function showStep2() {
+    /* ---------- CENTER POPUP FOR WRONG ANSWERS ---------- */
+    let toastTimer = null;
+    function showToast(title, msg) {
+      toast.innerHTML = `<strong>${title}</strong><span>${msg}</span>`;
+      toast.style.display = "block";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.style.display = "none";
+      }, 1200);
+    }
+
+    /* ---------- QUIZ CONTENT: 3 QUESTIONS (PLACEHOLDER "US") ---------- */
+    const QUIZ_QUESTIONS = [
+      {
+        q: "What’s my favorite thing about you?",
+        options: [
+          { text: "Your smile 😌", correct: true },
+          { text: "Your Wi-Fi password 🛜", correct: false },
+          { text: "Your tax skills 📊", correct: false },
+          { text: "Your ability to roast me 😭", correct: false }
+        ],
+        wrong: [
+          "Nope 😭 but I’ll allow it 😂",
+          "Wrong… but cute try 😌",
+          "Hmm… suspicious answer 🕵️‍♀️"
+        ]
+      },
+      {
+        q: "If we plan the perfect date, what’s NON-negotiable?",
+        options: [
+          { text: "Food + good vibes 🍝✨", correct: true },
+          { text: "A 3-hour PowerPoint 💀", correct: false },
+          { text: "No laughing allowed 😐", correct: false },
+          { text: "Only networking 😂", correct: false }
+        ],
+        wrong: [
+          "Be serious 😭",
+          "Wrong… I expected better 😂",
+          "Nope. Penalty: one hug 🤗"
+        ]
+      },
+      {
+        q: "Final boss: What do I want you to say right now?",
+        options: [
+          { text: "Yes 💘", correct: true },
+          { text: "Maybe 😶", correct: false },
+          { text: "Who are you 😭", correct: false },
+          { text: "Ask me again next year 🗓️", correct: false }
+        ],
+        wrong: [
+          "HAHA no 😭",
+          "Wrong. Try again, cutie 😌",
+          "That option is banned 🚫😂"
+        ]
+      }
+    ];
+
+    let quizIndex = 0;
+
+    function startQuiz() {
       setStep(2);
-      headline.textContent = "Okay… I’m smiling 😌💗";
-      subline.textContent = "Now pick our date idea:";
+      headline.textContent = "Okay… you said YES 😳💗";
+      subline.textContent = "Before we book the date… quick quiz.";
       zone.style.display = "none";
       hint.style.display = "none";
-      pickGrid.style.display = "grid";
+      pickGrid.style.display = "none";
       plan.style.display = "none";
       result.style.display = "none";
-      burstHeartsAround(document.querySelector(".card") || yesBtn, 6);
+
+      quiz.style.display = "block";
+      quizIndex = 0;
+      renderQuizQuestion();
+      burstHeartsAround(yesBtn, 6);
       beep(740, 0.06, "triangle", 0.03);
     }
 
-    function showStep3() {
+    function renderQuizQuestion() {
+      const total = QUIZ_QUESTIONS.length;
+      const cur = QUIZ_QUESTIONS[quizIndex];
+
+      quizProgress.textContent = `Question ${quizIndex + 1}/${total}`;
+      quizQ.textContent = cur.q;
+      quizOpts.innerHTML = "";
+
+      cur.options.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.className = "opt";
+        btn.innerHTML = `${opt.text}<span class="mini">Tap to answer</span>`;
+        btn.addEventListener("click", () => handleQuizAnswer(opt.correct));
+        quizOpts.appendChild(btn);
+      });
+
+      quizTiny.textContent = "No pressure… but also yes pressure 😌";
+    }
+
+    function handleQuizAnswer(isCorrect) {
+      const cur = QUIZ_QUESTIONS[quizIndex];
+
+      if (!isCorrect) {
+        const line = cur.wrong[Math.floor(Math.random() * cur.wrong.length)];
+        showToast("Wrong answer 😭", line);
+        beep(220, 0.06, "square", 0.02);
+        burstHeartsAround(quiz, 2);
+        return;
+      }
+
+      // correct
+      showToast("Correct 💗", "Okayyy 😌");
+      beep(880, 0.06, "triangle", 0.03);
+      burstHeartsAround(quiz, 6);
+
+      quizIndex++;
+      if (quizIndex >= QUIZ_QUESTIONS.length) {
+        finishQuiz();
+      } else {
+        setTimeout(renderQuizQuestion, 350);
+      }
+    }
+
+    function finishQuiz() {
       setStep(3);
+      quiz.style.display = "none";
+      headline.textContent = "You passed 😌✅";
+      subline.textContent = "Now pick our date idea:";
+      pickGrid.style.display = "grid";
+      burstHeartsAround(headline, 8);
+      beep(660, 0.07, "triangle", 0.03);
+    }
+
+    function showPlanStep() {
       pickGrid.style.display = "none";
       plan.style.display = "block";
       planTitle.textContent = `Perfect — ${selectedIdea}`;
@@ -706,24 +929,23 @@
       beep(523, 0.07, "sine", 0.03);
       setTimeout(() => beep(659, 0.07, "sine", 0.03), 90);
       setTimeout(() => beep(784, 0.09, "sine", 0.03), 180);
-      // small haptics (android)
       try { if (navigator.vibrate) navigator.vibrate([20, 30, 20]); } catch(e) {}
     }
 
-    /* ---------- YES CLICK (Step 1 -> Step 2) ---------- */
+    /* ---------- YES CLICK (Step 1 -> QUIZ) ---------- */
     yesBtn.addEventListener("click", () => {
-      showStep2();
+      startQuiz();
     });
 
-    /* ---------- Step 2 pick cards ---------- */
+    /* ---------- Date idea pick ---------- */
     pickGrid.addEventListener("click", (e) => {
       const btn = e.target.closest(".pick-card");
       if (!btn) return;
       selectedIdea = btn.getAttribute("data-pick");
-      showStep3();
+      showPlanStep();
     });
 
-    /* ---------- Step 3: time pills ---------- */
+    /* ---------- Time pills ---------- */
     const pills = Array.from(document.querySelectorAll(".pill"));
     pills.forEach(p => {
       p.addEventListener("click", () => {
@@ -738,7 +960,6 @@
     /* ---------- Calendar button ---------- */
     function buildGoogleCalendarUrl() {
       // Default: Feb 14 at 7:00 PM local time, 2 hours duration
-      // User can change: if selectedTime is set, adjust start time roughly.
       const year = new Date().getFullYear();
       const dateStr = `${year}0214`; // Feb 14
       let startHour = 19; // 7 PM
@@ -754,14 +975,12 @@
       const text = encodeURIComponent(`Valentine Date 💘`);
       const details = encodeURIComponent(`Idea: ${selectedIdea || "A surprise"}\nTime: ${selectedTime || "Let’s decide together"}\n\n(Generated from your Valentine page)`);
       const location = encodeURIComponent(``);
-      // action=TEMPLATE works in most browsers
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&location=${location}`;
     }
 
     calendarBtn.addEventListener("click", () => {
       if (!selectedTime) {
-        hint.style.display = "block";
-        hint.textContent = "Pick a time first 😌";
+        showToast("Wait 😌", "Pick a time first!");
         beep(220, 0.06, "square", 0.02);
         return;
       }
@@ -773,9 +992,6 @@
     finalConfettiBtn.addEventListener("click", () => {
       showFinal();
     });
-
-    /* ---------- Make hint reset nicely if share/copy changes it ---------- */
-    // (only if hint is hidden, no-op)
   </script>
 </body>
 </html>
