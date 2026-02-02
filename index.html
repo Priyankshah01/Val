@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Will you be my Valentine?</title>
+
+  <!-- Confetti library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --bg1: #ffd6e7;
+      --bg2: #ffeef6;
+      --card: #ffffffcc;
+      --yes: #ff3b7a;
+      --yesHover: #ff1f68;
+      --text: #111827;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, var(--bg2), var(--bg1));
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      overflow: hidden;
+      padding: 16px;
+      color: var(--text);
+    }
+
+    /* FULL-SCREEN CONFETTI CANVAS */
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .card {
+      position: relative;
+      width: min(720px, 92vw);
+      padding: 26px 22px 22px;
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border-radius: 22px;
+      text-align: center;
+      box-shadow: 0 18px 60px rgba(0,0,0,.15);
+      overflow: hidden;
+    }
+
+    /* top-right controls */
+    .top-actions{
+      position:absolute;
+      top: 14px;
+      right: 14px;
+      display:flex;
+      gap: 8px;
+      z-index: 5;
+    }
+    .icon-btn{
+      border: none;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 800;
+      background: rgba(255,255,255,.75);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px rgba(0,0,0,.10);
+      transition: transform .12s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .icon-btn:active{ transform: scale(.98); }
+
+    .art {
+      width: min(260px, 80vw);
+      margin: 8px auto 10px;
+      display: block;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.12));
+    }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 44px);
+      margin: 12px 0 10px;
+      line-height: 1.1;
+    }
+
+    .subline{
+      margin: 0 auto 14px;
+      font-size: 14px;
+      opacity: .85;
+      max-width: 52ch;
+    }
+
+    /* stepper */
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 10px 0 6px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(17,24,39,.16);
+    }
+    .dot.active { background: rgba(255,59,122,.85); }
+
+    .button-zone {
+      position: relative;
+      width: min(520px, 92%);
+      height: 160px;
+      margin: 0 auto;
+      touch-action: none;
+    }
+
+    button.main {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 16px 24px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,.14);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease, background .12s ease;
+    }
+
+    #yesBtn {
+      left: 18%;
+      background: var(--yes);
+      color: #fff;
+    }
+    #yesBtn:hover { background: var(--yesHover); }
+
+    #noBtn {
+      left: 62%;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 13px;
+      opacity: .75;
+      min-height: 18px;
+    }
+
+    /* cards for step 2 */
+    .pick-grid{
+      display: none;
+      margin: 14px auto 6px;
+      width: min(560px, 96%);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .pick-card{
+      border: none;
+      cursor: pointer;
+      padding: 14px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.7);
+      box-shadow: 0 10px 22px rgba(0,0,0,.10);
+      text-align: left;
+      transition: transform .12s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pick-card:hover{ transform: translateY(-2px); }
+    .pick-title{ font-weight: 900; margin: 0 0 4px; }
+    .pick-desc{ margin: 0; font-size: 13px; opacity: .75; }
+
+    /* step 3 */
+    .plan {
+      display: none;
+      margin-top: 14px;
+      animation: pop .35s ease;
+    }
+    .plan h2{
+      font-size: clamp(24px, 3.6vw, 34px);
+      margin: 0 0 10px;
+    }
+    .pill-row{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 8px 0 12px;
+    }
+    .pill{
+      border:none;
+      cursor:pointer;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 800;
+      background: rgba(255,255,255,.75);
+      box-shadow: 0 10px 18px rgba(0,0,0,.08);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease;
+    }
+    .pill:active{ transform: scale(.98); }
+    .pill.selected{
+      background: rgba(255,59,122,.14);
+      outline: 2px solid rgba(255,59,122,.55);
+    }
+
+    .cta-row{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 6px;
+    }
+    .cta{
+      border:none;
+      cursor:pointer;
+      padding: 12px 16px;
+      border-radius: 999px;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(0,0,0,.12);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease;
+    }
+    .cta.primary{
+      background: var(--yes);
+      color: #fff;
+    }
+    .cta.primary:hover{ background: var(--yesHover); }
+    .cta.secondary{
+      background: rgba(255,255,255,.75);
+      color: #111827;
+    }
+    .cta:active{ transform: scale(.98); }
+
+    .tiny{
+      font-size: 12px;
+      opacity: .7;
+      margin-top: 10px;
+    }
+
+    .result {
+      display: none;
+      margin-top: 18px;
+      animation: pop .35s ease;
+    }
+
+    .result h2 {
+      font-size: clamp(30px, 4.5vw, 46px);
+      margin: 10px 0 6px;
+    }
+
+    .fireworks {
+      width: min(380px, 90vw);
+      margin: 0 auto;
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.16);
+    }
+
+    /* floating hearts */
+    .hearts {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+    }
+    .heart {
+      position: absolute;
+      font-size: 18px;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(.9);
+      animation: floatUp 900ms ease forwards;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.12));
+    }
+    @keyframes floatUp{
+      0%   { opacity: 0; transform: translate(-50%, -30%) scale(.9); }
+      15%  { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -150%) scale(1.2); }
+    }
+
+    @keyframes pop {
+      from { transform: scale(.96); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 520px){
+      .pick-grid{ grid-template-columns: 1fr; }
+      .button-zone{ height: 170px; }
+      #yesBtn{ left: 12%; }
+      #noBtn{ left: 58%; }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="confettiCanvas"></canvas>
+
+  <main class="card" role="main" aria-live="polite">
+    <div class="top-actions">
+      <button class="icon-btn" id="muteBtn" aria-label="Toggle sound" title="Sound">🔊</button>
+      <button class="icon-btn" id="shareBtn" aria-label="Share" title="Share">🔗</button>
+    </div>
+
+    <div class="hearts" id="heartsLayer"></div>
+
+    <!-- ANIMAL WITH HEART -->
+    <svg class="art" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="fur" x1="0" x2="1">
+          <stop offset="0" stop-color="#f7c7a1"/>
+          <stop offset="1" stop-color="#f2a97b"/>
+        </linearGradient>
+        <linearGradient id="heart" x1="0" x2="1">
+          <stop offset="0" stop-color="#ff4d7d"/>
+          <stop offset="1" stop-color="#ff1f68"/>
+        </linearGradient>
+      </defs>
+
+      <path d="M250 50 C250 33 270 25 282 38
+               C294 25 314 33 314 50
+               C314 78 282 92 282 106
+               C282 92 250 78 250 50Z"
+            fill="url(#heart)"/>
+
+      <path d="M90 120 C90 70 140 40 190 60
+               C240 40 290 70 290 120
+               C290 180 240 210 190 210
+               C140 210 90 180 90 120Z"
+            fill="url(#fur)"/>
+
+      <path d="M110 92 L95 55 L140 78 Z" fill="#f2a97b"/>
+      <path d="M270 92 L285 55 L240 78 Z" fill="#f2a97b"/>
+
+      <circle cx="160" cy="130" r="8"/>
+      <circle cx="220" cy="130" r="8"/>
+
+      <path d="M190 144 C186 144 182 148 182 152
+               C182 160 190 164 190 170
+               C190 164 198 160 198 152
+               C198 148 194 144 190 144Z"
+            fill="#ff7aa2"/>
+    </svg>
+
+    <div class="steps" aria-hidden="true">
+      <div class="dot active" id="dot1"></div>
+      <div class="dot" id="dot2"></div>
+      <div class="dot" id="dot3"></div>
+    </div>
+
+    <h1 id="headline">nirali will you be my valentine?</h1>
+    <p class="subline" id="subline">I was going to ask normally… but you deserve something extra 🥰</p>
+
+    <!-- STEP 1 -->
+    <section class="button-zone" id="zone">
+      <button class="main" id="yesBtn">Yes</button>
+      <button class="main" id="noBtn">No</button>
+    </section>
+
+    <div class="hint" id="hint">“No” seems a bit shy 😈</div>
+
+    <!-- STEP 2 -->
+    <section class="pick-grid" id="pickGrid" aria-label="Pick a date idea">
+      <button class="pick-card" data-pick="Coffee date ☕">
+        <p class="pick-title">Coffee date ☕</p>
+        <p class="pick-desc">Cute, cozy, and lots of talking.</p>
+      </button>
+      <button class="pick-card" data-pick="Dinner date 🍝">
+        <p class="pick-title">Dinner date 🍝</p>
+        <p class="pick-desc">Main character energy. Dessert mandatory.</p>
+      </button>
+      <button class="pick-card" data-pick="Movie night 🎬">
+        <p class="pick-title">Movie night 🎬</p>
+        <p class="pick-desc">You pick the movie, I’ll bring snacks.</p>
+      </button>
+      <button class="pick-card" data-pick="Long walk 🌙">
+        <p class="pick-title">Long walk 🌙</p>
+        <p class="pick-desc">Simple, sweet, and romantic.</p>
+      </button>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="plan" id="plan">
+      <h2 id="planTitle">Perfect 😌</h2>
+      <div class="pill-row" aria-label="Pick a time">
+        <button class="pill" data-time="6:00 PM">6:00 PM</button>
+        <button class="pill" data-time="7:00 PM">7:00 PM</button>
+        <button class="pill" data-time="8:00 PM">8:00 PM</button>
+        <button class="pill" data-time="Anytime">Anytime</button>
+      </div>
+      <div class="cta-row">
+        <button class="cta primary" id="calendarBtn">Add to Calendar 📅</button>
+        <button class="cta secondary" id="finalConfettiBtn">Celebrate 🎉</button>
+      </div>
+      <div class="tiny" id="summaryText">Selected: <strong id="summaryPick">—</strong> at <strong id="summaryTime">—</strong></div>
+    </section>
+
+    <!-- FINAL RESULT -->
+    <section class="result" id="result">
+      <h2>YAY! 🎉</h2>
+      <img
+        class="fireworks"
+        src="https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif"
+        alt="Fireworks"
+      />
+      <div class="tiny">Okay… now it’s official 😌💘</div>
+    </section>
+  </main>
+
+  <script>
+    const zone = document.getElementById("zone");
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+    const result = document.getElementById("result");
+    const hint = document.getElementById("hint");
+    const pickGrid = document.getElementById("pickGrid");
+    const plan = document.getElementById("plan");
+    const planTitle = document.getElementById("planTitle");
+    const headline = document.getElementById("headline");
+    const subline = document.getElementById("subline");
+    const heartsLayer = document.getElementById("heartsLayer");
+
+    const dot1 = document.getElementById("dot1");
+    const dot2 = document.getElementById("dot2");
+    const dot3 = document.getElementById("dot3");
+
+    const muteBtn = document.getElementById("muteBtn");
+    const shareBtn = document.getElementById("shareBtn");
+    const calendarBtn = document.getElementById("calendarBtn");
+    const finalConfettiBtn = document.getElementById("finalConfettiBtn");
+    const summaryPick = document.getElementById("summaryPick");
+    const summaryTime = document.getElementById("summaryTime");
+
+    /* ---------- SOUND (no external files) ---------- */
+    let soundOn = true;
+    let audioCtx = null;
+
+    function beep(freq = 440, duration = 0.06, type = "sine", gain = 0.03) {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+
+        g.gain.value = gain;
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+
+        osc.start();
+        setTimeout(() => {
+          osc.stop();
+          osc.disconnect();
+          g.disconnect();
+        }, duration * 1000);
+      } catch (e) {}
+    }
+
+    muteBtn.addEventListener("click", () => {
+      soundOn = !soundOn;
+      muteBtn.textContent = soundOn ? "🔊" : "🔇";
+      beep(soundOn ? 660 : 220, 0.06, "triangle", 0.04);
+    });
+
+    /* ---------- SHARE ---------- */
+    shareBtn.addEventListener("click", async () => {
+      const shareData = {
+        title: document.title,
+        text: "Will you be my Valentine? 💘",
+        url: window.location.href
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+          beep(740, 0.07, "triangle", 0.04);
+        } else {
+          await navigator.clipboard.writeText(window.location.href);
+          hint.textContent = "Link copied! 🔗";
+          beep(740, 0.07, "triangle", 0.04);
+          setTimeout(() => (hint.textContent = getHintText()), 1200);
+        }
+      } catch (e) {}
+    });
+
+    /* ---------- CONFETTI ---------- */
+    const confettiCanvas = document.getElementById("confettiCanvas");
+
+    function resizeConfettiCanvas() {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      confettiCanvas.width = Math.floor(window.innerWidth * dpr);
+      confettiCanvas.height = Math.floor(window.innerHeight * dpr);
+      confettiCanvas.style.width = "100vw";
+      confettiCanvas.style.height = "100vh";
+    }
+
+    resizeConfettiCanvas();
+    window.addEventListener("resize", resizeConfettiCanvas);
+    window.addEventListener("orientationchange", () => setTimeout(resizeConfettiCanvas, 150));
+
+    const confettiInstance = confetti.create(confettiCanvas, {
+      resize: false,
+      useWorker: true
+    });
+
+    function fullScreenConfetti() {
+      const end = Date.now() + 1600;
+
+      (function frame() {
+        confettiInstance({
+          particleCount: 12,
+          spread: 90,
+          startVelocity: 45,
+          ticks: 180,
+          origin: { x: Math.random(), y: Math.random() * 0.3 }
+        });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+
+      setTimeout(() => {
+        confettiInstance({
+          particleCount: 300,
+          spread: 140,
+          startVelocity: 60,
+          ticks: 220,
+          origin: { x: 0.5, y: 0.55 }
+        });
+      }, 300);
+    }
+
+    /* ---------- HEARTS ---------- */
+    function spawnHeart(x, y) {
+      const heart = document.createElement("div");
+      heart.className = "heart";
+      heart.textContent = Math.random() > 0.5 ? "💗" : "💖";
+
+      const rect = heartsLayer.getBoundingClientRect();
+      const px = x - rect.left;
+      const py = y - rect.top;
+
+      heart.style.left = px + "px";
+      heart.style.top = py + "px";
+      heart.style.fontSize = (16 + Math.random() * 10) + "px";
+      heart.style.animationDuration = (750 + Math.random() * 350) + "ms";
+
+      heartsLayer.appendChild(heart);
+      setTimeout(() => heart.remove(), 1100);
+    }
+
+    function burstHeartsAround(el, count = 8) {
+      const r = el.getBoundingClientRect();
+      for (let i = 0; i < count; i++) {
+        const x = r.left + r.width / 2 + (Math.random() - 0.5) * 50;
+        const y = r.top + r.height / 2 + (Math.random() - 0.5) * 30;
+        spawnHeart(x, y);
+      }
+    }
+
+    yesBtn.addEventListener("pointerenter", () => {
+      burstHeartsAround(yesBtn, 4);
+      beep(660, 0.04, "sine", 0.02);
+    });
+
+    /* ---------- YES BUTTON GROWS ---------- */
+    let yesScale = 1;
+    function growYes() {
+      yesScale = Math.min(2.2, yesScale + 0.1);
+      yesBtn.style.transform = `translateY(-50%) scale(${yesScale})`;
+    }
+
+    /* ---------- NO BUTTON RUNS AWAY ---------- */
+    function clamp(n, min, max) {
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function moveNo(px, py) {
+      const z = zone.getBoundingClientRect();
+      const b = noBtn.getBoundingClientRect();
+
+      let dx = (b.left + b.width / 2) - px;
+      let dy = (b.top + b.height / 2) - py;
+      let mag = Math.hypot(dx, dy) || 1;
+      dx /= mag;
+      dy /= mag;
+
+      let newLeft = (b.left - z.left) + dx * 150;
+      let newTop  = (b.top - z.top) + dy * 150;
+
+      newLeft = clamp(newLeft, 0, z.width - b.width);
+      newTop  = clamp(newTop, 0, z.height - b.height);
+
+      noBtn.style.left = newLeft + "px";
+      noBtn.style.top = newTop + "px";
+      noBtn.style.transform = "none";
+
+      growYes();
+      beep(320, 0.04, "square", 0.015);
+    }
+
+    /* ---------- FUNNY NO TEXT ESCALATION ---------- */
+    let noAttempts = 0;
+    const noLines = [
+      "“No” seems a bit shy 😈",
+      "No? Are you sure? 😳",
+      "What if I bring snacks? 🍿",
+      "That button is allergic to rejection 🥲",
+      "Okay but… you’re kinda cute though 😌",
+      "Fine… you’re persistent 😂"
+    ];
+
+    function getHintText() {
+      return noLines[Math.min(noAttempts, noLines.length - 1)];
+    }
+
+    function onNoAttempt(px, py) {
+      noAttempts++;
+      hint.textContent = getHintText();
+      if (noAttempts === 5) {
+        noBtn.textContent = "Maybe…";
+        noBtn.style.background = "rgba(255,59,122,.12)";
+      }
+      moveNo(px, py);
+    }
+
+    zone.addEventListener("pointermove", e => {
+      const b = noBtn.getBoundingClientRect();
+      const d = Math.hypot(
+        (b.left + b.width / 2) - e.clientX,
+        (b.top + b.height / 2) - e.clientY
+      );
+      if (d < 140) onNoAttempt(e.clientX, e.clientY);
+    });
+
+    // also dodge on touch/press
+    zone.addEventListener("pointerdown", e => {
+      const b = noBtn.getBoundingClientRect();
+      const d = Math.hypot(
+        (b.left + b.width / 2) - e.clientX,
+        (b.top + b.height / 2) - e.clientY
+      );
+      if (d < 200) onNoAttempt(e.clientX, e.clientY);
+    });
+
+    noBtn.addEventListener("click", e => {
+      e.preventDefault();
+      // if they manage to click, still dodge + escalate
+      const fakeX = e.clientX || (window.innerWidth * 0.5);
+      const fakeY = e.clientY || (window.innerHeight * 0.5);
+      onNoAttempt(fakeX, fakeY);
+    });
+
+    /* ---------- STEPS CONTROL ---------- */
+    let selectedIdea = null;
+    let selectedTime = null;
+
+    function setStep(step) {
+      dot1.classList.toggle("active", step === 1);
+      dot2.classList.toggle("active", step === 2);
+      dot3.classList.toggle("active", step === 3);
+    }
+
+    function showStep2() {
+      setStep(2);
+      headline.textContent = "Okay… I’m smiling 😌💗";
+      subline.textContent = "Now pick our date idea:";
+      zone.style.display = "none";
+      hint.style.display = "none";
+      pickGrid.style.display = "grid";
+      plan.style.display = "none";
+      result.style.display = "none";
+      burstHeartsAround(document.querySelector(".card") || yesBtn, 6);
+      beep(740, 0.06, "triangle", 0.03);
+    }
+
+    function showStep3() {
+      setStep(3);
+      pickGrid.style.display = "none";
+      plan.style.display = "block";
+      planTitle.textContent = `Perfect — ${selectedIdea}`;
+      summaryPick.textContent = selectedIdea || "—";
+      summaryTime.textContent = selectedTime || "—";
+      subline.textContent = "Pick a time, then make it official 👇";
+      burstHeartsAround(planTitle, 6);
+      beep(880, 0.07, "triangle", 0.03);
+    }
+
+    function showFinal() {
+      plan.style.display = "none";
+      result.style.display = "block";
+      resizeConfettiCanvas();
+      fullScreenConfetti();
+      burstHeartsAround(result, 10);
+      beep(523, 0.07, "sine", 0.03);
+      setTimeout(() => beep(659, 0.07, "sine", 0.03), 90);
+      setTimeout(() => beep(784, 0.09, "sine", 0.03), 180);
+      // small haptics (android)
+      try { if (navigator.vibrate) navigator.vibrate([20, 30, 20]); } catch(e) {}
+    }
+
+    /* ---------- YES CLICK (Step 1 -> Step 2) ---------- */
+    yesBtn.addEventListener("click", () => {
+      showStep2();
+    });
+
+    /* ---------- Step 2 pick cards ---------- */
+    pickGrid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".pick-card");
+      if (!btn) return;
+      selectedIdea = btn.getAttribute("data-pick");
+      showStep3();
+    });
+
+    /* ---------- Step 3: time pills ---------- */
+    const pills = Array.from(document.querySelectorAll(".pill"));
+    pills.forEach(p => {
+      p.addEventListener("click", () => {
+        pills.forEach(x => x.classList.remove("selected"));
+        p.classList.add("selected");
+        selectedTime = p.getAttribute("data-time");
+        summaryTime.textContent = selectedTime;
+        beep(660, 0.05, "triangle", 0.03);
+      });
+    });
+
+    /* ---------- Calendar button ---------- */
+    function buildGoogleCalendarUrl() {
+      // Default: Feb 14 at 7:00 PM local time, 2 hours duration
+      // User can change: if selectedTime is set, adjust start time roughly.
+      const year = new Date().getFullYear();
+      const dateStr = `${year}0214`; // Feb 14
+      let startHour = 19; // 7 PM
+      if (selectedTime) {
+        if (selectedTime.includes("6:00")) startHour = 18;
+        if (selectedTime.includes("7:00")) startHour = 19;
+        if (selectedTime.includes("8:00")) startHour = 20;
+      }
+      const pad = (n) => String(n).padStart(2, "0");
+      const start = `${dateStr}T${pad(startHour)}0000`;
+      const end = `${dateStr}T${pad(Math.min(startHour + 2, 23))}0000`;
+
+      const text = encodeURIComponent(`Valentine Date 💘`);
+      const details = encodeURIComponent(`Idea: ${selectedIdea || "A surprise"}\nTime: ${selectedTime || "Let’s decide together"}\n\n(Generated from your Valentine page)`);
+      const location = encodeURIComponent(``);
+      // action=TEMPLATE works in most browsers
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&location=${location}`;
+    }
+
+    calendarBtn.addEventListener("click", () => {
+      if (!selectedTime) {
+        hint.style.display = "block";
+        hint.textContent = "Pick a time first 😌";
+        beep(220, 0.06, "square", 0.02);
+        return;
+      }
+      beep(740, 0.06, "triangle", 0.03);
+      window.open(buildGoogleCalendarUrl(), "_blank", "noopener,noreferrer");
+    });
+
+    /* ---------- Final celebrate button ---------- */
+    finalConfettiBtn.addEventListener("click", () => {
+      showFinal();
+    });
+
+    /* ---------- Make hint reset nicely if share/copy changes it ---------- */
+    // (only if hint is hidden, no-op)
+  </script>
+</body>
+</html>
